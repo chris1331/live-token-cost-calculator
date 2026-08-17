@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from time import monotonic
 
 import pandas as pd
 import streamlit as st
@@ -9,6 +10,7 @@ from src.files import diagnose
 from src.models import calculate_cost
 from src.pricing import fetch_all_prices
 from src.providers import ADAPTERS, ProviderError, UnsupportedFormat
+from src.security import csv_safe
 
 
 st.set_page_config(page_title="File Token Cost Calculator", page_icon="🧮", layout="wide")
@@ -19,6 +21,9 @@ PAIR_DEFINITIONS = [
     ("PowerPoint vs TXT", "PowerPoint", ["pptx", "ppt"], "TXT", ["txt"]),
     ("Excel vs CSV", "Excel", ["xlsx", "xls"], "CSV", ["csv"]),
 ]
+MAX_FILE_BYTES = 25 * 1024 * 1024
+MAX_PROVIDER_JOBS = 30
+CALCULATION_COOLDOWN_SECONDS = 10
 
 
 def initialize_prices() -> None:
@@ -137,6 +142,11 @@ for pair_name, left_label, left_types, right_label, right_types in PAIR_DEFINITI
     )
     for side, file in ((left_label, left_file), (right_label, right_file)):
         if file is not None:
+            if file.size > MAX_FILE_BYTES:
+                st.error(
+                    f"{file.name} is larger than the 25 MB safety limit and will not be processed."
+                )
+                continue
             data = file.getvalue()
             uploaded.append((pair_name, side, file))
             diagnostic = asdict(diagnose(file.name, data))
@@ -152,10 +162,29 @@ st.info(
     "Claude will explicitly skip unsupported PowerPoint and Excel originals."
 )
 
-if st.button("Calculate provider costs", type="primary", disabled=not uploaded):
+planned_jobs = sum(len(models) for models in selected_models.values()) * len(uploaded)
+if planned_jobs > MAX_PROVIDER_JOBS:
+    st.warning(
+        f"This selection creates {planned_jobs} provider requests. Reduce files or models to "
+        f"{MAX_PROVIDER_JOBS} requests or fewer."
+    )
+
+if st.button(
+    "Calculate provider costs",
+    type="primary",
+    disabled=not uploaded or planned_jobs > MAX_PROVIDER_JOBS,
+):
+    previous_calculation = st.session_state.get("last_calculation_at", 0.0)
+    elapsed = monotonic() - previous_calculation
+    if elapsed < CALCULATION_COOLDOWN_SECONDS:
+        st.warning(
+            f"Please wait {CALCULATION_COOLDOWN_SECONDS - int(elapsed)} seconds before calculating again."
+        )
+        st.stop()
+    st.session_state.last_calculation_at = monotonic()
     result_rows: list[dict] = []
     error_rows: list[dict] = []
-    jobs = sum(len(models) for models in selected_models.values()) * len(uploaded)
+    jobs = planned_jobs
     progress = st.progress(0, text="Starting provider token counts…")
     completed = 0
     for pair_name, side, file in uploaded:
@@ -203,7 +232,7 @@ if st.button("Calculate provider costs", type="primary", disabled=not uploaded):
                             "Reason": str(exc),
                         }
                     )
-                except Exception as exc:
+                except Exception:
                     error_rows.append(
                         {
                             "Pair": pair_name,
@@ -211,7 +240,7 @@ if st.button("Calculate provider costs", type="primary", disabled=not uploaded):
                             "File": file.name,
                             "Provider": provider,
                             "Model": model_id,
-                            "Reason": f"Unexpected counting failure: {exc}",
+                            "Reason": "Unexpected counting failure. Check the server logs or try again.",
                         }
                     )
     progress.empty()
@@ -239,9 +268,10 @@ if st.session_state.get("result_rows"):
             "Cost difference vs pair %": st.column_config.NumberColumn(format="%.2f%%"),
         },
     )
+    csv_export_frame = result_frame.map(csv_safe)
     st.download_button(
         "Download CSV report",
-        data=result_frame.to_csv(index=False).encode("utf-8"),
+        data=csv_export_frame.to_csv(index=False).encode("utf-8"),
         file_name="file-token-cost-comparison.csv",
         mime="text/csv",
     )
@@ -249,4 +279,3 @@ if st.session_state.get("result_rows"):
 if st.session_state.get("error_rows"):
     st.subheader("Unsupported or failed counts")
     st.dataframe(pd.DataFrame(st.session_state.error_rows), use_container_width=True, hide_index=True)
-

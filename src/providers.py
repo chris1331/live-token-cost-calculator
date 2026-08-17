@@ -43,14 +43,22 @@ class ProviderTokenAdapter(ABC):
             raise ProviderError(f"Provider API error ({response.status_code}): {error}")
         return payload
 
+    @staticmethod
+    def _post(*args, provider: str, **kwargs) -> requests.Response:
+        try:
+            return requests.post(*args, **kwargs)
+        except requests.RequestException as exc:
+            raise ProviderError(f"{provider} network request failed. Check connectivity and try again.") from exc
+
 
 class OpenAITokenAdapter(ProviderTokenAdapter):
     provider = "OpenAI"
     endpoint = "https://api.openai.com/v1/responses/input_tokens"
 
     def _count(self, payload: dict) -> int:
-        response = requests.post(
+        response = self._post(
             self.endpoint,
+            provider=self.provider,
             headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
             json=payload,
             timeout=self.timeout,
@@ -99,8 +107,9 @@ class ClaudeTokenAdapter(ProviderTokenAdapter):
     endpoint = "https://api.anthropic.com/v1/messages/count_tokens"
 
     def _count(self, model: str, content: list[dict]) -> int:
-        response = requests.post(
+        response = self._post(
             self.endpoint,
+            provider=self.provider,
             headers={
                 "x-api-key": self.api_key,
                 "anthropic-version": "2023-06-01",
@@ -141,10 +150,10 @@ class GeminiTokenAdapter(ProviderTokenAdapter):
     endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{model}:countTokens"
 
     def _count(self, model: str, parts: list[dict]) -> tuple[int, dict[str, int]]:
-        response = requests.post(
+        response = self._post(
             self.endpoint.format(model=model),
-            params={"key": self.api_key},
-            headers={"Content-Type": "application/json"},
+            provider=self.provider,
+            headers={"Content-Type": "application/json", "x-goog-api-key": self.api_key},
             json={"contents": [{"role": "user", "parts": parts}]},
             timeout=self.timeout,
         )
