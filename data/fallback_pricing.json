@@ -1,0 +1,15 @@
+{
+  "verified_at": "2026-08-17",
+  "rates": [
+    {"provider":"OpenAI","model_id":"gpt-5.6-sol","display_name":"GPT-5.6 Sol","input":5.0,"output":30.0,"cached":0.5,"long_input":10.0,"long_output":45.0,"source":"https://developers.openai.com/api/docs/pricing"},
+    {"provider":"OpenAI","model_id":"gpt-5.6-terra","display_name":"GPT-5.6 Terra","input":2.0,"output":12.0,"cached":0.2,"long_input":4.0,"long_output":18.0,"source":"https://developers.openai.com/api/docs/pricing"},
+    {"provider":"OpenAI","model_id":"gpt-5.6-luna","display_name":"GPT-5.6 Luna","input":0.2,"output":1.2,"cached":0.02,"long_input":0.4,"long_output":1.8,"source":"https://developers.openai.com/api/docs/pricing"},
+    {"provider":"Claude","model_id":"claude-opus-5","display_name":"Claude Opus 5","input":5.0,"output":25.0,"cached":0.5,"source":"https://platform.claude.com/docs/en/about-claude/pricing"},
+    {"provider":"Claude","model_id":"claude-sonnet-5","display_name":"Claude Sonnet 5","input":2.0,"output":10.0,"cached":0.2,"source":"https://platform.claude.com/docs/en/about-claude/pricing"},
+    {"provider":"Claude","model_id":"claude-haiku-4-5","display_name":"Claude Haiku 4.5","input":1.0,"output":5.0,"cached":0.1,"source":"https://platform.claude.com/docs/en/about-claude/pricing"},
+    {"provider":"Gemini","model_id":"gemini-3.7-flash","display_name":"Gemini 3.7 Flash","input":0.75,"output":3.75,"cached":0.075,"source":"https://ai.google.dev/gemini-api/docs/pricing"},
+    {"provider":"Gemini","model_id":"gemini-3.5-flash-lite","display_name":"Gemini 3.5 Flash-Lite","input":0.3,"output":2.5,"cached":0.03,"source":"https://ai.google.dev/gemini-api/docs/pricing"},
+    {"provider":"Gemini","model_id":"gemini-2.5-pro","display_name":"Gemini 2.5 Pro","input":1.25,"output":10.0,"cached":0.125,"long_input":2.5,"long_output":15.0,"long_threshold":200000,"source":"https://ai.google.dev/gemini-api/docs/pricing"}
+  ]
+}
+
